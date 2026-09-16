@@ -1,4 +1,0 @@
-"use client";
-import{useCallback,useEffect,useState}from"react";import{itemsService}from"@/services/items-service";import type{CreateItemPayload,ItemQuery,KnowledgeItem,PaginatedResponse}from"@/types/item";
-const initial:PaginatedResponse<KnowledgeItem>={data:[],page:1,pageSize:5,total:0,totalPages:1};
-export function useItems(query:ItemQuery){const[result,setResult]=useState(initial);const[loading,setLoading]=useState(true);const[error,setError]=useState("");const load=useCallback(async()=>{setLoading(true);setError("");try{setResult(await itemsService.list(query))}catch{setError("Não foi possível carregar os itens. Tente novamente.")}finally{setLoading(false)}},[query.page,query.pageSize,query.search,query.sort,query.type]);useEffect(()=>{void load()},[load]);const createItem=async(payload:CreateItemPayload)=>{const created=await itemsService.create(payload);await load();return created};return{...result,loading,error,reload:load,createItem}}

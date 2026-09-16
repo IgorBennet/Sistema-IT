@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Central de instruções, fluxos, métodos e pautas de reunião do setor.">
+  <meta name="theme-color" content="#073f81">
+  <title>Sistema IT</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23073f81'/%3E%3Cpath d='M18 17h28v30H18z' fill='white'/%3E%3Cpath d='M24 25h16M24 32h16M24 39h10' stroke='%230768c6' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo principal</a>
+
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6M9 12h11"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6zM14 2v5h5M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-flow" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M6 8v4h12v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 14h2M14 14h2M8 18h2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+    <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 5a7 7 0 0 1 0 14" fill="currentColor"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m9 17 7-7a3 3 0 0 0-4-4l-8 8a5 5 0 0 0 7 7l8-8"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="m15 4 5 5-4 2-4 5-4-4 5-4zM8 16l-4 4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand-group">
+        <a id="main-menu-link" class="back-link" href="#" aria-label="Voltar ao Menu Principal">
+          <svg class="icon"><use href="#i-arrow-left"></use></svg>
+          <span>Voltar ao<br>Menu Principal</span>
+        </a>
+        <div class="brand">
+          <strong>SISTEMA IT</strong>
+          <span class="brand__divider" aria-hidden="true"></span>
+          <span class="brand__description">Instruções. Métodos. Fluxos. Pautas.<br>Tudo do seu setor, em um só lugar.</span>
+        </div>
+      </div>
+
+      <nav class="accessibility" aria-label="Recursos de acessibilidade">
+        <button class="text-control desktop-control" type="button" data-font="small" aria-label="Diminuir texto">A−</button>
+        <button class="text-control desktop-control" type="button" data-font="normal" aria-label="Restaurar tamanho do texto">A</button>
+        <button class="text-control desktop-control" type="button" data-font="large" aria-label="Aumentar texto">A+</button>
+        <button id="contrast-button" class="icon-button contrast-button" type="button" aria-pressed="false">
+          <svg class="icon"><use href="#i-contrast"></use></svg><span>Alto contraste</span>
+        </button>
+        <button class="icon-button notification-button" type="button" aria-label="Notificações, uma não lida">
+          <svg class="icon"><use href="#i-bell"></use></svg><span class="notification-dot"></span>
+        </button>
+        <div class="user-chip"><svg class="icon icon--large"><use href="#i-user"></use></svg><span>João Silva</span></div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo-principal" class="container main-content" tabindex="-1">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">BEM-VINDO(A) AO</p>
+        <h1 id="page-title">Sistema IT</h1>
+        <p class="intro__text">Consulte instruções de trabalho, fluxos, métodos e pautas de reunião para manter o setor atualizado.</p>
+      </div>
+      <div class="intro__actions">
+        <button id="new-item-button" class="button button--primary button--large" type="button">
+          <svg class="icon"><use href="#i-plus"></use></svg> Novo item
+        </button>
+        <aside class="tip-card">
+          <span class="tip-card__icon" aria-hidden="true">💡</span>
+          <p><strong>Conhecimento compartilhado fortalece o setor.</strong>Mantenha as informações atualizadas.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="search-panel" aria-label="Pesquisa e filtros">
+      <form id="search-form" class="search-form" role="search">
+        <label class="sr-only" for="search-input">Pesquisar itens</label>
+        <svg class="icon search-form__icon"><use href="#i-search"></use></svg>
+        <input id="search-input" type="search" autocomplete="off" placeholder="Pesquisar por título, descrição, tipo ou autor">
+        <button class="button button--search" type="submit">Buscar</button>
+      </form>
+      <div class="filter-row">
+        <div id="filter-buttons" class="filter-buttons" role="group" aria-label="Filtrar por tipo"></div>
+        <div class="sort-control">
+          <label for="sort-select">Ordenar por</label>
+          <select id="sort-select">
+            <option value="newest">Mais recentes</option>
+            <option value="updated">Atualizados recentemente</option>
+            <option value="oldest">Mais antigos</option>
+            <option value="title">Título (A–Z)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section id="meetings-section" class="content-section" aria-labelledby="meetings-title">
+      <div class="section-heading">
+        <span class="section-heading__icon"><svg class="icon icon--large"><use href="#i-calendar"></use></svg></span>
+        <div><h2 id="meetings-title">Pautas de Reunião</h2><p>Acompanhe pautas, decisões e atualizações do setor.</p></div>
+      </div>
+      <div id="meetings-grid" class="meeting-grid"></div>
+    </section>
+
+    <section class="content-section" aria-labelledby="documents-title">
+      <div class="section-heading">
+        <span class="section-heading__icon"><svg class="icon icon--large"><use href="#i-file"></use></svg></span>
+        <div><h2 id="documents-title">Documentos e Procedimentos</h2><p>Instruções, fluxos, métodos e pautas disponíveis para consulta.</p></div>
+      </div>
+
+      <div id="loading-state" class="state-panel" aria-live="polite" aria-busy="true">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+        <span class="sr-only">Carregando itens</span>
+      </div>
+      <div id="empty-state" class="state-panel empty-state" hidden>
+        <svg class="icon icon--xl"><use href="#i-search"></use></svg>
+        <h3>Nenhum item encontrado</h3><p>Revise a pesquisa ou escolha outro filtro.</p>
+        <button id="clear-filters" class="button button--outline" type="button">Limpar filtros</button>
+      </div>
+      <div id="items-content" hidden>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">ID</th><th scope="col">Tipo e título</th><th scope="col">Criado por</th><th scope="col">Atualização</th><th scope="col">Anexo</th><th scope="col"><span class="sr-only">Ações</span></th></tr></thead>
+            <tbody id="items-table-body"></tbody>
+          </table>
+        </div>
+        <div id="items-cards" class="mobile-cards"></div>
+        <div class="pagination-row">
+          <p id="pagination-summary"></p>
+          <nav id="pagination" class="pagination" aria-label="Paginação dos itens"></nav>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal-backdrop" class="modal-backdrop" hidden></div>
+
+  <section id="details-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="details-title" hidden>
+    <div class="modal__panel modal__panel--medium">
+      <button class="modal__close" type="button" data-close-modal aria-label="Fechar detalhes"><svg class="icon"><use href="#i-x"></use></svg></button>
+      <p class="modal__eyebrow">Detalhes do item</p><h2 id="details-title">Detalhes do item</h2>
+      <p id="details-subtitle" class="modal__subtitle"></p>
+      <div id="details-body"></div>
+      <div class="modal__actions"><button id="preview-button" class="button button--outline" type="button"><svg class="icon"><use href="#i-eye"></use></svg>Visualizar</button><button id="download-button" class="button button--primary" type="button"><svg class="icon"><use href="#i-download"></use></svg>Baixar anexo</button></div>
+    </div>
+  </section>
+
+  <section id="preview-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="preview-title" hidden>
+    <div class="modal__panel modal__panel--large">
+      <button class="modal__close" type="button" data-close-modal aria-label="Fechar visualização"><svg class="icon"><use href="#i-x"></use></svg></button>
+      <p class="modal__eyebrow">Visualização do anexo</p><h2 id="preview-title">Anexo</h2>
+      <div id="preview-body" class="attachment-preview"></div>
+      <div class="modal__actions"><button id="preview-download-button" class="button button--primary" type="button"><svg class="icon"><use href="#i-download"></use></svg>Baixar anexo</button></div>
+    </div>
+  </section>
+
+  <section id="new-item-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="new-item-title" hidden>
+    <div class="modal__panel modal__panel--large">
+      <button class="modal__close" type="button" data-close-modal aria-label="Fechar formulário"><svg class="icon"><use href="#i-x"></use></svg></button>
+      <p class="modal__eyebrow">Publicação</p><h2 id="new-item-title">Novo item</h2><p class="modal__subtitle">Publique uma informação para consulta dos colaboradores.</p>
+      <form id="new-item-form" novalidate>
+        <fieldset><legend>Tipo <span class="required">*</span></legend><div id="type-options" class="type-options"></div></fieldset>
+        <div class="form-field"><label for="item-title">Título <span class="required">*</span></label><input id="item-title" name="title" type="text" maxlength="120" placeholder="Digite o título do item" required><p id="title-error" class="field-error" role="alert"></p></div>
+        <div class="form-field"><label for="item-description">Descrição <span class="required">*</span></label><textarea id="item-description" name="description" rows="5" maxlength="500" placeholder="Descreva o conteúdo, objetivo ou resumo do item" required></textarea><p id="description-error" class="field-error" role="alert"></p></div>
+        <div class="form-field"><label for="item-file">Anexo</label><label class="upload-field" for="item-file"><svg class="icon icon--xl"><use href="#i-paperclip"></use></svg><strong id="file-label">Clique para selecionar um arquivo</strong><span>PDF, DOC, XLS, JPG ou PNG · máximo 10 MB</span></label><input id="item-file" class="sr-only" name="attachment" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"><p id="file-error" class="field-error" role="alert"></p></div>
+        <label class="important-option"><input id="item-important" name="important" type="checkbox"><svg class="icon"><use href="#i-pin"></use></svg><span><strong>Marcar como importante</strong><small>O item receberá identificação textual e visual.</small></span></label>
+        <div class="author-box"><strong>Criado por</strong><span>João Silva (preenchido automaticamente)</span></div>
+        <div class="modal__actions"><button class="button button--outline" type="button" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Revisar e publicar</button></div>
+      </form>
+    </div>
+  </section>
+
+  <section id="confirm-modal" class="modal modal--top" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+    <div class="modal__panel modal__panel--small"><h2 id="confirm-title">Publicar este item?</h2><p id="confirm-text"></p><div class="modal__actions"><button class="button button--outline" type="button" data-close-confirm>Voltar e revisar</button><button id="confirm-publish" class="button button--primary" type="button">Confirmar publicação</button></div></div>
+  </section>
+
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
