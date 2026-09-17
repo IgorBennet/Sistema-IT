@@ -197,6 +197,18 @@
     <div class="modal__panel modal__panel--small"><h2 id="confirm-title">Publicar este item?</h2><p id="confirm-text"></p><div class="modal__actions"><button class="button button--outline" type="button" data-close-confirm>Voltar e revisar</button><button id="confirm-publish" class="button button--primary" type="button">Confirmar publicação</button></div></div>
   </section>
 
+  <section id="delete-confirm-modal" class="modal modal--top" role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" hidden>
+    <div class="modal__panel modal__panel--small">
+      <h2 id="delete-confirm-title">Excluir este item?</h2>
+      <p id="delete-confirm-text"></p>
+      <p class="modal__subtitle">Essa ação não poderá ser desfeita.</p>
+      <div class="modal__actions">
+        <button class="button button--outline" type="button" data-cancel-delete>Cancelar</button>
+        <button id="confirm-delete-button" class="button button--danger" type="button"><svg class="icon"><use href="#i-trash"></use></svg>Excluir item</button>
+      </div>
+    </div>
+  </section>
+
   <div id="toast-region" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>
