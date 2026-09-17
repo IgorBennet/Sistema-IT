@@ -33,7 +33,7 @@ let items=[
    2. ESTADO DA INTERFACE E FUNÇÕES UTILITÁRIAS
    ================================================================ */
 
-const state={search:"",type:"all",sort:"newest",page:1,selected:null,newType:"instruction",pendingPayload:null,lastFocused:null,themePreference:"system",editingId:null};
+const state={search:"",type:"all",sort:"newest",page:1,selected:null,newType:"instruction",pendingPayload:null,pendingDeleteId:null,lastFocused:null,themePreference:"system",editingId:null};
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
 const esc=value=>String(value??"").replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
@@ -362,17 +362,38 @@ function downloadItem(id){
   toast("Download iniciado.","success");
 }
 
-async function deleteItem(id){
+function requestDelete(id,trigger){
   const item=items.find(entry=>entry.id===id);
   if(!item){toast("Item não encontrado.","error");return;}
-  const confirmed=window.confirm(`Deseja realmente excluir “${item.title}”?\n\nEssa ação não poderá ser desfeita.`);
-  if(!confirmed)return;
+  state.pendingDeleteId=id;
+  $("#delete-confirm-text").textContent=`Você está prestes a excluir “${item.title}”.`;
+  openModal("#delete-confirm-modal",trigger);
+}
+
+function waitForInterfaceUpdate(){
+  return new Promise(resolve=>requestAnimationFrame(()=>window.setTimeout(resolve,0)));
+}
+
+async function confirmDelete(){
+  const id=state.pendingDeleteId;
+  const item=items.find(entry=>entry.id===id);
+  if(!item){state.pendingDeleteId=null;closeModal($("#delete-confirm-modal"));toast("Item não encontrado.","error");return;}
+
+  const button=$("#confirm-delete-button");
+  button.disabled=true;
+  button.textContent="Excluindo...";
   if(item.attachment?.objectUrl)URL.revokeObjectURL(item.attachment.objectUrl);
   items=items.filter(entry=>entry.id!==id);
   if(state.selected?.id===id){state.selected=null;closeTopModal();}
-  try{await persistItems();}catch(error){console.error("Falha ao salvar exclusão:",error);toast("A exclusão vale apenas até a página ser atualizada.","error");}
+  state.pendingDeleteId=null;
+  closeModal($("#delete-confirm-modal"));
   renderItems();
   toast(`${TYPE_LABELS[item.type]} excluído(a) com sucesso.`,"success");
+  button.disabled=false;
+  button.innerHTML=`${icon("i-trash")}Excluir item`;
+
+  await waitForInterfaceUpdate();
+  try{await persistItems();}catch(error){console.error("Falha ao salvar exclusão:",error);toast("A exclusão vale apenas até a página ser atualizada.","error");}
 }
 
 /* ================================================================
@@ -484,17 +505,19 @@ function bindEvents(){
   $("#item-file").addEventListener("change",event=>{$("#file-label").textContent=event.target.files[0]?.name||"Clique para selecionar um arquivo";});
   $("#new-item-form").addEventListener("submit",event=>{event.preventDefault();if(validateForm()){const editing=Boolean(state.editingId);$("#confirm-title").textContent=editing?"Salvar alterações?":"Publicar este item?";$("#confirm-text").textContent=editing?`As alterações realizadas em “${state.pendingPayload.title}” serão salvas.`:`“${state.pendingPayload.title}” ficará disponível na central para todos os colaboradores com acesso.`;$("#confirm-publish").textContent=editing?"Salvar alterações":"Confirmar publicação";openModal("#confirm-modal");}});
   $("#confirm-publish").addEventListener("click",saveItem);
+  $("#confirm-delete-button").addEventListener("click",confirmDelete);
   $("#edit-button").addEventListener("click",()=>{if(state.selected)openEditForm(state.selected.id);});
   $("#preview-button").addEventListener("click",showPreview);$("#download-button").addEventListener("click",()=>downloadItem(state.selected?.id));$("#preview-download-button").addEventListener("click",()=>downloadItem(state.selected?.id));
   document.addEventListener("click",event=>{
     const filter=event.target.closest("[data-filter]");if(filter){state.type=filter.dataset.filter;state.page=1;renderItems();return;}
     const page=event.target.closest("[data-page]");if(page&&!page.disabled){state.page=Number(page.dataset.page);renderItems();$("#documents-title").scrollIntoView({behavior:"smooth"});return;}
-    const remove=event.target.closest("[data-delete]");if(remove){deleteItem(remove.dataset.delete);return;}
+    const remove=event.target.closest("[data-delete]");if(remove){requestDelete(remove.dataset.delete,remove);return;}
     const open=event.target.closest("[data-open]");if(open){showDetails(open.dataset.open,open);return;}
     const download=event.target.closest("[data-download]");if(download){downloadItem(download.dataset.download);return;}
     const type=event.target.closest("[data-new-type]");if(type){state.newType=type.dataset.newType;renderTypeOptions();return;}
     const close=event.target.closest("[data-close-modal]");if(close){closeModal(close.closest(".modal"));return;}
     if(event.target.closest("[data-close-confirm]")){closeModal($("#confirm-modal"));}
+    if(event.target.closest("[data-cancel-delete]")){state.pendingDeleteId=null;closeModal($("#delete-confirm-modal"));}
   });
   document.addEventListener("keydown",event=>{if(event.key==="Escape")closeTopModal();if(event.key==="Tab"){const modal=$$('.modal:not([hidden])').at(-1);if(!modal)return;const focusable=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')];if(!focusable.length)return;const first=focusable[0],last=focusable.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}});
 }
