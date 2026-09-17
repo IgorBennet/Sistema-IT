@@ -31,7 +31,11 @@ O visualizador funciona inteiramente no navegador:
 - Word: prévia textual de DOCX.
 - PowerPoint: prévia textual dos slides de PPTX.
 
+A biblioteca JSZip está incluída localmente em `vendor/jszip.min.js` para tornar a leitura de DOCX, XLSX e PPTX compatível com navegadores que não oferecem descompactação ZIP nativa. Ela é carregada pelo próprio Live Server e não requer instalação ou internet.
+
 Arquivos antigos `.doc`, `.xls` e `.ppt` não possuem renderização nativa confiável no navegador. Nesses casos, o sistema oferece abertura e download. Quando o backend disponibilizar uma URL HTTPS para arquivos do Office, o visualizador também poderá utilizar o Microsoft Office Online.
+
+A prévia local dos formatos modernos apresenta o conteúdo principal: texto do Word, células da primeira aba do Excel e textos dos slides do PowerPoint. Ela não reproduz integralmente fontes, animações, macros, gráficos ou a diagramação original do Microsoft Office.
 
 Os anexos dos cinco registros iniciais são mocks e contêm apenas metadados. Arquivos reais escolhidos pelo botão **Novo item** são guardados no IndexedDB e continuam disponíveis para visualização depois que a página é atualizada ou reaberta no mesmo navegador.
 
