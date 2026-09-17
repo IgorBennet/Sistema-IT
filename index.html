@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Central de instruções, fluxos, métodos e pautas de reunião do setor.">
+  <meta name="description" content="Central de procedimentos, fluxos, métodos e pautas de reunião do setor.">
   <meta name="theme-color" content="#073f81">
   <title>Sistema IT</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23073f81'/%3E%3Cpath d='M18 17h28v30H18z' fill='white'/%3E%3Cpath d='M24 25h16M24 32h16M24 39h10' stroke='%230768c6' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -13,6 +13,7 @@
 <body>
   <a class="skip-link" href="#conteudo-principal">Ir para o conteúdo principal</a>
 
+  <!-- Biblioteca de ícones SVG utilizada sem dependências externas. -->
   <svg class="svg-sprite" aria-hidden="true">
     <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6M9 12h11"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
@@ -27,12 +28,14 @@
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></symbol>
     <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
     <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 5a7 7 0 0 1 0 14" fill="currentColor"/></symbol>
+    <symbol id="i-theme" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/></symbol>
     <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m9 17 7-7a3 3 0 0 0-4-4l-8 8a5 5 0 0 0 7 7l8-8"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="m15 4 5 5-4 2-4 5-4-4 5-4zM8 16l-4 4"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
   </svg>
 
+  <!-- Cabeçalho, integração com menu principal e controles de acessibilidade. -->
   <header class="topbar">
     <div class="container topbar__inner">
       <div class="brand-group">
@@ -43,7 +46,7 @@
         <div class="brand">
           <strong>SISTEMA IT</strong>
           <span class="brand__divider" aria-hidden="true"></span>
-          <span class="brand__description">Instruções. Métodos. Fluxos. Pautas.<br>Tudo do seu setor, em um só lugar.</span>
+          <span class="brand__description">Procedimentos. Métodos. Fluxos. Pautas.<br>Tudo do seu setor, em um só lugar.</span>
         </div>
       </div>
 
@@ -54,6 +57,15 @@
         <button id="contrast-button" class="icon-button contrast-button" type="button" aria-pressed="false">
           <svg class="icon"><use href="#i-contrast"></use></svg><span>Alto contraste</span>
         </button>
+        <label class="theme-control" for="theme-select">
+          <svg class="icon" aria-hidden="true"><use href="#i-theme"></use></svg>
+          <span class="sr-only">Tema da página</span>
+          <select id="theme-select" aria-label="Tema da página">
+            <option value="system">Sistema</option>
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+          </select>
+        </label>
         <button class="icon-button notification-button" type="button" aria-label="Notificações, uma não lida">
           <svg class="icon"><use href="#i-bell"></use></svg><span class="notification-dot"></span>
         </button>
@@ -62,12 +74,13 @@
     </div>
   </header>
 
+  <!-- Conteúdo principal: apresentação, pesquisa, filtros e documentos. -->
   <main id="conteudo-principal" class="container main-content" tabindex="-1">
     <section class="intro" aria-labelledby="page-title">
       <div>
         <p class="eyebrow">BEM-VINDO(A) AO</p>
         <h1 id="page-title">Sistema IT</h1>
-        <p class="intro__text">Consulte instruções de trabalho, fluxos, métodos e pautas de reunião para manter o setor atualizado.</p>
+        <p class="intro__text">Consulte procedimentos, fluxos, métodos e pautas de reunião para manter o setor atualizado.</p>
       </div>
       <div class="intro__actions">
         <button id="new-item-button" class="button button--primary button--large" type="button">
@@ -112,7 +125,7 @@
     <section class="content-section" aria-labelledby="documents-title">
       <div class="section-heading">
         <span class="section-heading__icon"><svg class="icon icon--large"><use href="#i-file"></use></svg></span>
-        <div><h2 id="documents-title">Documentos e Procedimentos</h2><p>Instruções, fluxos, métodos e pautas disponíveis para consulta.</p></div>
+        <div><h2 id="documents-title">Documentos e Procedimentos</h2><p>Procedimentos, fluxos, métodos e pautas disponíveis para consulta.</p></div>
       </div>
 
       <div id="loading-state" class="state-panel" aria-live="polite" aria-busy="true">
@@ -140,6 +153,7 @@
     </section>
   </main>
 
+  <!-- Modais de detalhes, visualização de arquivo e criação de item. -->
   <div id="modal-backdrop" class="modal-backdrop" hidden></div>
 
   <section id="details-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="details-title" hidden>
@@ -169,7 +183,7 @@
         <fieldset><legend>Tipo <span class="required">*</span></legend><div id="type-options" class="type-options"></div></fieldset>
         <div class="form-field"><label for="item-title">Título <span class="required">*</span></label><input id="item-title" name="title" type="text" maxlength="120" placeholder="Digite o título do item" required><p id="title-error" class="field-error" role="alert"></p></div>
         <div class="form-field"><label for="item-description">Descrição <span class="required">*</span></label><textarea id="item-description" name="description" rows="5" maxlength="500" placeholder="Descreva o conteúdo, objetivo ou resumo do item" required></textarea><p id="description-error" class="field-error" role="alert"></p></div>
-        <div class="form-field"><label for="item-file">Anexo</label><label class="upload-field" for="item-file"><svg class="icon icon--xl"><use href="#i-paperclip"></use></svg><strong id="file-label">Clique para selecionar um arquivo</strong><span>PDF, DOC, XLS, JPG ou PNG · máximo 10 MB</span></label><input id="item-file" class="sr-only" name="attachment" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"><p id="file-error" class="field-error" role="alert"></p></div>
+        <div class="form-field"><label for="item-file">Anexo</label><label class="upload-field" for="item-file"><svg class="icon icon--xl"><use href="#i-paperclip"></use></svg><strong id="file-label">Clique para selecionar um arquivo</strong><span>PDF, imagem, Word, Excel, PowerPoint, TXT ou CSV · máximo 10 MB</span></label><input id="item-file" class="sr-only" name="attachment" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv"><p id="file-error" class="field-error" role="alert"></p></div>
         <label class="important-option"><input id="item-important" name="important" type="checkbox"><svg class="icon"><use href="#i-pin"></use></svg><span><strong>Marcar como importante</strong><small>O item receberá identificação textual e visual.</small></span></label>
         <div class="author-box"><strong>Criado por</strong><span>João Silva (preenchido automaticamente)</span></div>
         <div class="modal__actions"><button class="button button--outline" type="button" data-close-modal>Cancelar</button><button class="button button--primary" type="submit">Revisar e publicar</button></div>

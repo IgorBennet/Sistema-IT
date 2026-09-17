@@ -1,11 +1,19 @@
 "use strict";
 
-const TYPE_LABELS={instruction:"Instrução de Trabalho",flow:"Fluxo",method:"Método",meeting:"Pauta de Reunião"};
+/* ================================================================
+   1. CONFIGURAÇÕES, TIPOS E DADOS MOCKADOS
+   Troque MAIN_MENU_URL pela rota corporativa quando ela existir.
+   O valor interno "instruction" foi preservado para compatibilidade,
+   mas toda a interface apresenta esse tipo como "Procedimento".
+   ================================================================ */
+
+const TYPE_LABELS={instruction:"Procedimento",flow:"Fluxo",method:"Método",meeting:"Pauta de Reunião"};
 const TYPE_ICONS={instruction:"i-file",flow:"i-flow",method:"i-settings",meeting:"i-calendar"};
-const FILTERS=[{value:"all",label:"Todos"},{value:"instruction",label:"Instruções"},{value:"flow",label:"Fluxos"},{value:"method",label:"Métodos"},{value:"meeting",label:"Pautas de Reunião"}];
+const FILTERS=[{value:"all",label:"Todos"},{value:"instruction",label:"Procedimentos"},{value:"flow",label:"Fluxos"},{value:"method",label:"Métodos"},{value:"meeting",label:"Pautas de Reunião"}];
 const PAGE_SIZE=5;
 const MAX_FILE_SIZE=10*1024*1024;
 const MAIN_MENU_URL="";
+const THEME_STORAGE_KEY="sistema-it-theme";
 
 const authors={maria:{name:"Maria Souza",initials:"MS"},carlos:{name:"Carlos Lima",initials:"CL"},joao:{name:"João Silva",initials:"JS"},ana:{name:"Ana Paula",initials:"AP"},roberto:{name:"Roberto Ferreira",initials:"RF"}};
 const attachment=(name,mimeType="application/pdf")=>({name,mimeType,sizeBytes:1240000});
@@ -24,7 +32,11 @@ let items=[
   {id:"IT-017",type:"instruction",title:"Abertura de Chamados",description:"Passo a passo para registro, classificação e acompanhamento de chamados internos.",attachment:attachment("IT_Chamados.pdf"),author:authors.joao,createdAt:"2026-06-30T14:00:00Z",updatedAt:"2026-07-03T14:00:00Z",important:false}
 ];
 
-const state={search:"",type:"all",sort:"newest",page:1,selected:null,newType:"instruction",pendingPayload:null,lastFocused:null};
+/* ================================================================
+   2. ESTADO DA INTERFACE E FUNÇÕES UTILITÁRIAS
+   ================================================================ */
+
+const state={search:"",type:"all",sort:"newest",page:1,selected:null,newType:"instruction",pendingPayload:null,lastFocused:null,themePreference:"system"};
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
 const esc=value=>String(value??"").replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
@@ -35,6 +47,23 @@ const formatBytes=bytes=>bytes>=1048576?`${(bytes/1048576).toFixed(1).replace(".
 const badge=type=>`<span class="badge badge--${type}">${esc(TYPE_LABELS[type])}</span>`;
 const important=item=>item.important?`<span class="important-badge">${icon("i-pin")}Importante</span>`:"";
 
+function extensionOf(fileName=""){
+  return fileName.toLowerCase().split(".").pop()||"";
+}
+
+function applyTheme(preference,showFeedback=false){
+  const allowed=["system","light","dark"];
+  state.themePreference=allowed.includes(preference)?preference:"system";
+  const systemIsDark=window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const resolved=state.themePreference==="system"?(systemIsDark?"dark":"light"):state.themePreference;
+  document.documentElement.dataset.theme=resolved;
+  try{localStorage.setItem(THEME_STORAGE_KEY,state.themePreference);}catch(error){console.warn("Não foi possível salvar a preferência de tema.",error);}
+  const select=$("#theme-select");
+  if(select)select.value=state.themePreference;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content",resolved==="dark"?"#071522":"#073f81");
+  if(showFeedback)toast(`Tema ${state.themePreference==="system"?"do sistema":state.themePreference==="dark"?"escuro":"claro"} ativado.`,"success");
+}
+
 function toast(message,type="info"){
   const element=document.createElement("div");
   element.className=`toast toast--${type}`;
@@ -42,6 +71,10 @@ function toast(message,type="info"){
   $("#toast-region").append(element);
   window.setTimeout(()=>element.remove(),3500);
 }
+
+/* ================================================================
+   3. PESQUISA, FILTROS, ORDENAÇÃO E RENDERIZAÇÃO
+   ================================================================ */
 
 function counts(){return Object.fromEntries(FILTERS.map(filter=>[filter.value,filter.value==="all"?items.length:items.filter(item=>item.type===filter.value).length]));}
 function filteredItems(){
@@ -101,17 +134,157 @@ function closeModal(modal){
 }
 function closeTopModal(){const visible=$$('.modal:not([hidden])');if(visible.length)closeModal(visible.at(-1));}
 
+/* ================================================================
+   4. LEITOR DE ANEXOS
+   - Imagens e PDF: visualização nativa do navegador.
+   - TXT e CSV: leitura direta do arquivo.
+   - DOCX, XLSX e PPTX: extração local do conteúdo XML compactado.
+   Não há envio do arquivo para serviços externos.
+   ================================================================ */
+
+function xmlElements(root,localName){
+  return [...root.getElementsByTagName("*")].filter(element=>element.localName===localName);
+}
+
+function parseXml(bytes){
+  const source=new TextDecoder("utf-8").decode(bytes);
+  return new DOMParser().parseFromString(source,"application/xml");
+}
+
+async function inflateZipEntry(compressed,method){
+  if(method===0)return compressed;
+  if(method!==8)throw new Error("compactacao_nao_suportada");
+  if(typeof DecompressionStream==="undefined")throw new Error("navegador_sem_descompactacao");
+  const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function readZipEntries(file){
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  let endRecord=-1;
+  const minimum=Math.max(0,bytes.length-65557);
+  for(let index=bytes.length-22;index>=minimum;index--){
+    if(view.getUint32(index,true)===0x06054b50){endRecord=index;break;}
+  }
+  if(endRecord<0)throw new Error("arquivo_office_invalido");
+  const totalEntries=view.getUint16(endRecord+10,true);
+  let cursor=view.getUint32(endRecord+16,true);
+  const entries=new Map();
+  for(let entryIndex=0;entryIndex<totalEntries;entryIndex++){
+    if(view.getUint32(cursor,true)!==0x02014b50)break;
+    const method=view.getUint16(cursor+10,true);
+    const compressedSize=view.getUint32(cursor+20,true);
+    const nameLength=view.getUint16(cursor+28,true);
+    const extraLength=view.getUint16(cursor+30,true);
+    const commentLength=view.getUint16(cursor+32,true);
+    const localOffset=view.getUint32(cursor+42,true);
+    const name=new TextDecoder("utf-8").decode(bytes.slice(cursor+46,cursor+46+nameLength));
+    const localNameLength=view.getUint16(localOffset+26,true);
+    const localExtraLength=view.getUint16(localOffset+28,true);
+    const dataStart=localOffset+30+localNameLength+localExtraLength;
+    const compressed=bytes.slice(dataStart,dataStart+compressedSize);
+    entries.set(name,await inflateZipEntry(compressed,method));
+    cursor+=46+nameLength+extraLength+commentLength;
+  }
+  return entries;
+}
+
+function previewDocx(entries){
+  const documentBytes=entries.get("word/document.xml");
+  if(!documentBytes)throw new Error("documento_word_sem_conteudo");
+  const xml=parseXml(documentBytes);
+  const paragraphs=xmlElements(xml,"p").map(paragraph=>xmlElements(paragraph,"t").map(node=>node.textContent||"").join("")).filter(Boolean).slice(0,250);
+  return `<article class="office-document"><h3>Prévia do documento</h3>${paragraphs.length?paragraphs.map(text=>`<p>${esc(text)}</p>`).join(""):"<p>O documento não possui texto disponível para prévia.</p>"}</article>`;
+}
+
+function spreadsheetColumnIndex(reference="A1"){
+  const letters=(reference.match(/[A-Z]+/i)||["A"])[0].toUpperCase();
+  return [...letters].reduce((value,letter)=>value*26+letter.charCodeAt(0)-64,0)-1;
+}
+
+function previewXlsx(entries){
+  const sharedBytes=entries.get("xl/sharedStrings.xml");
+  const shared=sharedBytes?xmlElements(parseXml(sharedBytes),"si").map(item=>xmlElements(item,"t").map(node=>node.textContent||"").join("")):[];
+  const sheetName=[...entries.keys()].filter(name=>/^xl\/worksheets\/sheet\d+\.xml$/i.test(name)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))[0];
+  if(!sheetName)throw new Error("planilha_sem_aba");
+  const rows=xmlElements(parseXml(entries.get(sheetName)),"row").slice(0,100).map(row=>{
+    const values=[];
+    xmlElements(row,"c").slice(0,30).forEach(cell=>{
+      const column=spreadsheetColumnIndex(cell.getAttribute("r")||"A1");
+      const type=cell.getAttribute("t");
+      const valueNode=xmlElements(cell,"v")[0];
+      const inlineText=xmlElements(cell,"t").map(node=>node.textContent||"").join("");
+      const raw=valueNode?.textContent||inlineText||"";
+      values[column]=type==="s"?(shared[Number(raw)]??raw):raw;
+    });
+    return values;
+  });
+  const width=Math.min(30,Math.max(1,...rows.map(row=>row.length)));
+  return `<div class="office-sheet"><p class="preview-note">Exibindo até 100 linhas e 30 colunas da primeira aba.</p><div class="preview-table-wrap"><table class="preview-table"><tbody>${rows.map(row=>`<tr>${Array.from({length:width},(_,index)=>`<td>${esc(row[index]??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>`;
+}
+
+function previewPptx(entries){
+  const slides=[...entries.keys()].filter(name=>/^ppt\/slides\/slide\d+\.xml$/i.test(name)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).slice(0,40);
+  if(!slides.length)throw new Error("apresentacao_sem_slides");
+  return `<div class="office-slides">${slides.map((name,index)=>{const texts=xmlElements(parseXml(entries.get(name)),"t").map(node=>node.textContent||"").filter(Boolean);return `<section class="office-slide"><span>Slide ${index+1}</span>${texts.length?texts.map((text,textIndex)=>textIndex===0?`<h3>${esc(text)}</h3>`:`<p>${esc(text)}</p>`).join(""):"<p>Slide sem texto disponível para prévia.</p>"}</section>`;}).join("")}</div>`;
+}
+
+async function previewModernOffice(file,extension){
+  const entries=await readZipEntries(file);
+  if(extension==="docx")return previewDocx(entries);
+  if(extension==="xlsx")return previewXlsx(entries);
+  if(extension==="pptx")return previewPptx(entries);
+  throw new Error("formato_office_nao_suportado");
+}
+
+function parseCsv(text){
+  const rows=[];let row=[],value="",quoted=false;
+  for(let index=0;index<text.length;index++){
+    const character=text[index];
+    if(character==='"'&&quoted&&text[index+1]==='"'){value+='"';index++;}
+    else if(character==='"'){quoted=!quoted;}
+    else if((character===","||character===";")&&!quoted){row.push(value);value="";}
+    else if((character==="\n"||character==="\r")&&!quoted){if(character==="\r"&&text[index+1]==="\n")index++;row.push(value);if(row.some(cell=>cell.trim()))rows.push(row);row=[];value="";}
+    else value+=character;
+  }
+  row.push(value);if(row.some(cell=>cell.trim()))rows.push(row);
+  return rows.slice(0,150);
+}
+
+function csvPreview(text){
+  const rows=parseCsv(text);return `<div class="office-sheet"><p class="preview-note">Exibindo até 150 linhas do arquivo CSV.</p><div class="preview-table-wrap"><table class="preview-table"><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${esc(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>`;
+}
+
+function unavailablePreview(item,message){
+  const attachment=item.attachment;
+  return `${icon("i-file","icon icon--xl")}<h3>${esc(attachment.name)}</h3><p>${esc(message)}</p><small>${esc(attachment.mimeType||"Tipo não informado")} · ${formatBytes(attachment.sizeBytes)}</small>`;
+}
+
 function detailsMarkup(item){return `<div class="details-hero"><span class="item-type-icon">${icon(TYPE_ICONS[item.type],"icon icon--large")}</span><div><h3>${esc(item.title)}</h3>${badge(item.type)} ${important(item)}</div></div><p class="details-description">${esc(item.description)}</p><div class="details-grid"><div class="detail-field">${icon("i-user")}<span><strong>Criado por</strong>${esc(item.author.name)}</span></div><div class="detail-field">${icon("i-calendar")}<span><strong>Data de criação</strong>${formatDate(item.createdAt,true)}</span></div><div class="detail-field">${icon("i-calendar")}<span><strong>Última atualização</strong>${formatDate(item.updatedAt,true)}</span></div><div class="detail-field">${icon("i-paperclip")}<span><strong>Anexo</strong>${item.attachment?`${esc(item.attachment.name)} (${formatBytes(item.attachment.sizeBytes)})`:"Nenhum anexo"}</span></div></div>`;}
 function showDetails(id,trigger){
   const item=items.find(entry=>entry.id===id);if(!item)return;
   state.selected=item;$("#details-title").textContent=item.title;$("#details-subtitle").textContent=`ID ${item.id} · informações e anexo do registro.`;$("#details-body").innerHTML=detailsMarkup(item);
   $("#preview-button").disabled=!item.attachment;$("#download-button").disabled=!item.attachment;openModal("#details-modal",trigger);
 }
-function showPreview(){
+async function showPreview(){
   const item=state.selected;if(!item?.attachment)return;
-  $("#preview-title").textContent=item.attachment.name;
-  $("#preview-body").innerHTML=`${icon("i-file","icon icon--xl")}<h3>${esc(item.attachment.name)}</h3><p>Pré-visualização demonstrativa do anexo associado a <strong>${esc(item.title)}</strong>.</p><p>Na integração com o backend, o arquivo real será exibido nesta área.</p><small>${esc(item.attachment.mimeType)} · ${formatBytes(item.attachment.sizeBytes)}</small>`;
+  const attachment=item.attachment;
+  const extension=extensionOf(attachment.name);
+  const source=attachment.objectUrl||attachment.url||"";
+  const body=$("#preview-body");
+  $("#preview-title").textContent=attachment.name;
+  body.innerHTML='<div class="preview-loading"><div class="preview-spinner"></div><p>Preparando visualização...</p></div>';
   openModal("#preview-modal");
+  try{
+    if(source&&(attachment.mimeType?.startsWith("image/")||["jpg","jpeg","png","gif","webp"].includes(extension))){body.innerHTML=`<img class="preview-image" src="${esc(source)}" alt="Prévia de ${esc(attachment.name)}">`;return;}
+    if(source&&(attachment.mimeType==="application/pdf"||extension==="pdf")){body.innerHTML=`<iframe class="preview-frame" src="${esc(source)}" title="Prévia de ${esc(attachment.name)}"></iframe>`;return;}
+    if(attachment.file&&(extension==="txt"||extension==="csv"||attachment.mimeType?.startsWith("text/"))){const text=await attachment.file.text();body.innerHTML=extension==="csv"?csvPreview(text):`<pre class="text-preview">${esc(text.slice(0,200000))}</pre>`;return;}
+    if(attachment.file&&["docx","xlsx","pptx"].includes(extension)){body.innerHTML=await previewModernOffice(attachment.file,extension);return;}
+    if(attachment.url&&/^https:\/\//i.test(attachment.url)&&["doc","docx","xls","xlsx","ppt","pptx"].includes(extension)){const viewer=`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(attachment.url)}`;body.innerHTML=`<iframe class="preview-frame" src="${esc(viewer)}" title="Prévia de ${esc(attachment.name)}"></iframe>`;return;}
+    if(source){body.innerHTML=`${unavailablePreview(item,"Este formato não possui visualização nativa completa no navegador.")}<a class="button button--outline preview-open-link" href="${esc(source)}" target="_blank" rel="noopener">Abrir arquivo</a>`;return;}
+    body.innerHTML=unavailablePreview(item,"Este é um registro mockado. O conteúdo real será exibido quando o backend fornecer a URL ou o arquivo do anexo.");
+  }catch(error){console.error("Falha ao gerar prévia:",error);body.innerHTML=`${unavailablePreview(item,"Não foi possível gerar a prévia deste arquivo. Você ainda pode baixá-lo normalmente.")}`;toast("Não foi possível preparar a visualização.","error");}
 }
 function downloadItem(id){
   const item=items.find(entry=>entry.id===id)||state.selected;if(!item?.attachment){toast("Este item não possui anexo.","error");return;}
@@ -132,6 +305,12 @@ function deleteItem(id){
   toast(`${TYPE_LABELS[item.type]} excluído(a) com sucesso.`,"success");
 }
 
+/* ================================================================
+   5. FORMULÁRIO DE CRIAÇÃO E EXCLUSÃO DE ITENS
+   Os anexos selecionados ficam apenas nesta sessão. O backend futuro
+   deverá armazenar o arquivo e devolver sua URL definitiva.
+   ================================================================ */
+
 function renderTypeOptions(){
   $("#type-options").innerHTML=Object.entries(TYPE_LABELS).map(([type,label])=>`<button class="type-option" type="button" data-new-type="${type}" aria-pressed="${state.newType===type}">${icon(TYPE_ICONS[type],"icon icon--large")}<span>${label}</span></button>`).join("");
 }
@@ -148,16 +327,21 @@ function publishItem(){
   const payload=state.pendingPayload;if(!payload)return;
   const maxId=Math.max(...items.map(item=>Number(item.id.split("-")[1])));const now=new Date().toISOString();
   const newItem={id:`IT-${String(maxId+1).padStart(3,"0")}`,type:payload.type,title:payload.title,description:payload.description,author:authors.joao,createdAt:now,updatedAt:now,important:payload.important};
-  if(payload.file)newItem.attachment={name:payload.file.name,mimeType:payload.file.type||"application/octet-stream",sizeBytes:payload.file.size,objectUrl:URL.createObjectURL(payload.file)};
+  if(payload.file)newItem.attachment={name:payload.file.name,mimeType:payload.file.type||"application/octet-stream",sizeBytes:payload.file.size,file:payload.file,objectUrl:URL.createObjectURL(payload.file)};
   items=[newItem,...items];state.search="";state.type="all";state.sort="newest";state.page=1;$("#search-input").value="";$("#sort-select").value="newest";
   $("#new-item-form").reset();state.newType="instruction";renderTypeOptions();$("#file-label").textContent="Clique para selecionar um arquivo";state.pendingPayload=null;
   closeModal($("#confirm-modal"));closeModal($("#new-item-modal"));renderItems();toast(`Item ${newItem.id} publicado com sucesso.`,"success");
 }
 
+/* ================================================================
+   6. EVENTOS, ACESSIBILIDADE E INICIALIZAÇÃO
+   ================================================================ */
+
 function bindEvents(){
   $("#main-menu-link").addEventListener("click",event=>{if(!MAIN_MENU_URL){event.preventDefault();toast("A URL do Menu Principal ainda não foi configurada.");}else event.currentTarget.href=MAIN_MENU_URL;});
   $$("[data-font]").forEach(button=>button.addEventListener("click",()=>{const size=button.dataset.font;if(size==="normal")document.documentElement.removeAttribute("data-font-size");else document.documentElement.dataset.fontSize=size;toast("Tamanho do texto atualizado.","success");}));
   $("#contrast-button").addEventListener("click",event=>{const active=document.documentElement.classList.toggle("high-contrast");event.currentTarget.setAttribute("aria-pressed",String(active));toast("Modo de alto contraste alterado.","success");});
+  $("#theme-select").addEventListener("change",event=>applyTheme(event.target.value,true));
   $("#search-form").addEventListener("submit",event=>{event.preventDefault();state.search=$("#search-input").value;state.page=1;renderItems();});
   $("#sort-select").addEventListener("change",event=>{state.sort=event.target.value;state.page=1;renderItems();});
   $("#clear-filters").addEventListener("click",()=>{$("#search-input").value="";state.search="";state.type="all";state.page=1;renderItems();});
@@ -179,4 +363,12 @@ function bindEvents(){
   document.addEventListener("keydown",event=>{if(event.key==="Escape")closeTopModal();if(event.key==="Tab"){const modal=$$('.modal:not([hidden])').at(-1);if(!modal)return;const focusable=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')];if(!focusable.length)return;const first=focusable[0],last=focusable.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}});
 }
 
-document.addEventListener("DOMContentLoaded",()=>{bindEvents();renderTypeOptions();window.setTimeout(()=>{$("#loading-state").hidden=true;renderItems();},350);});
+document.addEventListener("DOMContentLoaded",()=>{
+  let savedTheme="system";
+  try{savedTheme=localStorage.getItem(THEME_STORAGE_KEY)||"system";}catch(error){console.warn("Não foi possível ler a preferência de tema.",error);}
+  applyTheme(savedTheme);
+  bindEvents();
+  renderTypeOptions();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if(state.themePreference==="system")applyTheme("system");});
+  window.setTimeout(()=>{$("#loading-state").hidden=true;renderItems();},350);
+});
