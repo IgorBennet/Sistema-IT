@@ -12,12 +12,9 @@ const TYPE_ICONS={instruction:"i-file",flow:"i-flow",method:"i-settings",meeting
 const FILTERS=[{value:"all",label:"Todos"},{value:"instruction",label:"Procedimentos"},{value:"flow",label:"Fluxos"},{value:"method",label:"Métodos"},{value:"meeting",label:"Pautas de Reunião"}];
 const PAGE_SIZE=5;
 const MAX_FILE_SIZE=100*1024*1024;
+const MAX_INLINE_OFFICE_PREVIEW_SIZE=25*1024*1024;
 const MAIN_MENU_URL="";
 const THEME_STORAGE_KEY="sistema-it-theme";
-const DATABASE_NAME="sistema-it-local";
-const DATABASE_VERSION=1;
-const DATABASE_STORE="application-data";
-const ITEMS_STORAGE_KEY="items";
 
 const authors={maria:{name:"Maria Souza",initials:"MS"},carlos:{name:"Carlos Lima",initials:"CL"},joao:{name:"João Silva",initials:"JS"},ana:{name:"Ana Paula",initials:"AP"},roberto:{name:"Roberto Ferreira",initials:"RF"}};
 const attachment=(name,mimeType="application/pdf")=>({name,mimeType,sizeBytes:1240000});
@@ -48,64 +45,8 @@ function extensionOf(fileName=""){
   return fileName.toLowerCase().split(".").pop()||"";
 }
 
-/* O IndexedDB armazena os itens e os arquivos reais sem exigir backend.
-   Quando a API corporativa estiver pronta, estas funções serão substituídas
-   pelas chamadas HTTP descritas na documentação. */
-function openLocalDatabase(){
-  return new Promise((resolve,reject)=>{
-    if(!window.indexedDB){reject(new Error("indexeddb_indisponivel"));return;}
-    const request=indexedDB.open(DATABASE_NAME,DATABASE_VERSION);
-    request.onupgradeneeded=()=>{
-      const database=request.result;
-      if(!database.objectStoreNames.contains(DATABASE_STORE))database.createObjectStore(DATABASE_STORE);
-    };
-    request.onsuccess=()=>resolve(request.result);
-    request.onerror=()=>reject(request.error||new Error("falha_ao_abrir_indexeddb"));
-  });
-}
-
-function itemForStorage(item){
-  if(!item.attachment)return {...item};
-  const {objectUrl,...storedAttachment}=item.attachment;
-  return {...item,attachment:storedAttachment};
-}
-
-function itemFromStorage(item){
-  if(!item.attachment)return item;
-  const hydrated={...item,attachment:{...item.attachment}};
-  if(hydrated.attachment.file instanceof Blob)hydrated.attachment.objectUrl=URL.createObjectURL(hydrated.attachment.file);
-  return hydrated;
-}
-
-async function persistItems(){
-  const database=await openLocalDatabase();
-  const storedItems=items.map(itemForStorage);
-  await new Promise((resolve,reject)=>{
-    const transaction=database.transaction(DATABASE_STORE,"readwrite");
-    transaction.objectStore(DATABASE_STORE).put(storedItems,ITEMS_STORAGE_KEY);
-    transaction.oncomplete=resolve;
-    transaction.onerror=()=>reject(transaction.error||new Error("falha_ao_salvar_itens"));
-    transaction.onabort=()=>reject(transaction.error||new Error("salvamento_cancelado"));
-  });
-  database.close();
-}
-
-async function loadStoredItems(){
-  const database=await openLocalDatabase();
-  const storedItems=await new Promise((resolve,reject)=>{
-    const transaction=database.transaction(DATABASE_STORE,"readonly");
-    const request=transaction.objectStore(DATABASE_STORE).get(ITEMS_STORAGE_KEY);
-    request.onsuccess=()=>resolve(request.result);
-    request.onerror=()=>reject(request.error||new Error("falha_ao_ler_itens"));
-  });
-  database.close();
-  if(Array.isArray(storedItems))items=storedItems.map(itemFromStorage);
-  else await persistItems();
-}
-
 function attachmentSource(attachment){
   if(!attachment)return "";
-  if(!attachment.objectUrl&&attachment.file instanceof Blob)attachment.objectUrl=URL.createObjectURL(attachment.file);
   return attachment.objectUrl||attachment.url||"";
 }
 
@@ -347,6 +288,7 @@ async function showPreview(){
     if(source&&(attachment.mimeType?.startsWith("image/")||["jpg","jpeg","png","gif","webp"].includes(extension))){body.innerHTML=`<img class="preview-image" src="${esc(source)}" alt="Prévia de ${esc(attachment.name)}">`;return;}
     if(source&&(attachment.mimeType==="application/pdf"||extension==="pdf")){body.innerHTML=`<iframe class="preview-frame" src="${esc(source)}" title="Prévia de ${esc(attachment.name)}"></iframe>`;return;}
     if(attachment.file&&(extension==="txt"||extension==="csv"||attachment.mimeType?.startsWith("text/"))){const text=await attachment.file.text();body.innerHTML=extension==="csv"?csvPreview(text):`<pre class="text-preview">${esc(text.slice(0,200000))}</pre>`;return;}
+    if(attachment.file&&["docx","xlsx","pptx"].includes(extension)&&attachment.file.size>MAX_INLINE_OFFICE_PREVIEW_SIZE){body.innerHTML=`${unavailablePreview(item,"O arquivo é grande demais para gerar uma prévia local sem comprometer o navegador. Utilize a opção de download para abrir no Microsoft Office.")}<a class="button button--outline preview-open-link" href="${esc(source)}" download="${esc(attachment.name)}">Baixar arquivo</a>`;return;}
     if(attachment.file&&["docx","xlsx","pptx"].includes(extension)){body.innerHTML=await previewModernOffice(attachment.file,extension);return;}
     if(attachment.file&&["doc","xls","ppt"].includes(extension)){body.innerHTML=`${unavailablePreview(item,"Este é um formato antigo do Microsoft Office e não pode ser renderizado diretamente pelo navegador. Salve o arquivo como DOCX, XLSX ou PPTX para visualizar seu conteúdo aqui.")}<a class="button button--outline preview-open-link" href="${esc(source)}" target="_blank" rel="noopener">Abrir arquivo</a>`;return;}
     if(attachment.url&&/^https:\/\//i.test(attachment.url)&&["doc","docx","xls","xlsx","ppt","pptx"].includes(extension)){const viewer=`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(attachment.url)}`;body.innerHTML=`<iframe class="preview-frame" src="${esc(viewer)}" title="Prévia de ${esc(attachment.name)}"></iframe>`;return;}
@@ -370,11 +312,7 @@ function requestDelete(id,trigger){
   openModal("#delete-confirm-modal",trigger);
 }
 
-function waitForInterfaceUpdate(){
-  return new Promise(resolve=>requestAnimationFrame(()=>window.setTimeout(resolve,0)));
-}
-
-async function confirmDelete(){
+function confirmDelete(){
   const id=state.pendingDeleteId;
   const item=items.find(entry=>entry.id===id);
   if(!item){state.pendingDeleteId=null;closeModal($("#delete-confirm-modal"));toast("Item não encontrado.","error");return;}
@@ -391,15 +329,12 @@ async function confirmDelete(){
   toast(`${TYPE_LABELS[item.type]} excluído(a) com sucesso.`,"success");
   button.disabled=false;
   button.innerHTML=`${icon("i-trash")}Excluir item`;
-
-  await waitForInterfaceUpdate();
-  try{await persistItems();}catch(error){console.error("Falha ao salvar exclusão:",error);toast("A exclusão vale apenas até a página ser atualizada.","error");}
 }
 
 /* ================================================================
    5. FORMULÁRIO DE CRIAÇÃO, EDIÇÃO E EXCLUSÃO DE ITENS
-   Os dados e anexos são guardados no IndexedDB deste navegador.
-   O backend futuro permitirá compartilhá-los entre colaboradores.
+   Os dados e anexos ficam somente na memória durante esta sessão.
+   O backend futuro será responsável pela persistência definitiva.
    ================================================================ */
 
 function renderTypeOptions(){
@@ -448,7 +383,7 @@ function openEditForm(id){
   openModal("#new-item-modal");
 }
 
-async function saveItem(){
+function saveItem(){
   const payload=state.pendingPayload;if(!payload)return;
   const now=new Date().toISOString();
   let savedItem;
@@ -481,11 +416,9 @@ async function saveItem(){
 
   state.search="";state.type="all";state.sort="newest";state.page=1;
   $("#search-input").value="";$("#sort-select").value="newest";
-  let persisted=true;
-  try{await persistItems();}catch(error){persisted=false;console.error("Falha ao salvar no navegador:",error);}
   closeModal($("#confirm-modal"));closeModal($("#new-item-modal"));
   renderItems();
-  toast(persisted?`Item ${savedItem.id} ${action} e salvo neste navegador.`:`Item ${savedItem.id} ${action}, mas ficará disponível somente nesta sessão.`,persisted?"success":"error");
+  toast(`Item ${savedItem.id} ${action} nesta sessão.`,"success");
   resetItemForm();
 }
 
@@ -522,13 +455,12 @@ function bindEvents(){
   document.addEventListener("keydown",event=>{if(event.key==="Escape")closeTopModal();if(event.key==="Tab"){const modal=$$('.modal:not([hidden])').at(-1);if(!modal)return;const focusable=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')];if(!focusable.length)return;const first=focusable[0],last=focusable.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}});
 }
 
-document.addEventListener("DOMContentLoaded",async()=>{
+document.addEventListener("DOMContentLoaded",()=>{
   let savedTheme="system";
   try{savedTheme=localStorage.getItem(THEME_STORAGE_KEY)||"system";}catch(error){console.warn("Não foi possível ler a preferência de tema.",error);}
   applyTheme(savedTheme);
   bindEvents();
   renderTypeOptions();
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{if(state.themePreference==="system")applyTheme("system");});
-  try{await loadStoredItems();}catch(error){console.error("Falha ao carregar dados locais:",error);toast("Não foi possível acessar o armazenamento local. Os dados funcionarão somente nesta sessão.","error");}
   window.setTimeout(()=>{$("#loading-state").hidden=true;renderItems();},350);
 });
