@@ -248,6 +248,15 @@ async function readZipEntries(file){
   return entries;
 }
 
+async function readZipEntriesWithJsZip(file){
+  if(typeof window.JSZip==="undefined")return readZipEntries(file);
+  const archive=await window.JSZip.loadAsync(file);
+  const entries=new Map();
+  const xmlFiles=Object.values(archive.files).filter(entry=>!entry.dir&&entry.name.toLowerCase().endsWith(".xml"));
+  await Promise.all(xmlFiles.map(async entry=>entries.set(entry.name,await entry.async("uint8array"))));
+  return entries;
+}
+
 function previewDocx(entries){
   const documentBytes=entries.get("word/document.xml");
   if(!documentBytes)throw new Error("documento_word_sem_conteudo");
@@ -289,7 +298,7 @@ function previewPptx(entries){
 }
 
 async function previewModernOffice(file,extension){
-  const entries=await readZipEntries(file);
+  const entries=await readZipEntriesWithJsZip(file);
   if(extension==="docx")return previewDocx(entries);
   if(extension==="xlsx")return previewXlsx(entries);
   if(extension==="pptx")return previewPptx(entries);
@@ -339,6 +348,7 @@ async function showPreview(){
     if(source&&(attachment.mimeType==="application/pdf"||extension==="pdf")){body.innerHTML=`<iframe class="preview-frame" src="${esc(source)}" title="Prévia de ${esc(attachment.name)}"></iframe>`;return;}
     if(attachment.file&&(extension==="txt"||extension==="csv"||attachment.mimeType?.startsWith("text/"))){const text=await attachment.file.text();body.innerHTML=extension==="csv"?csvPreview(text):`<pre class="text-preview">${esc(text.slice(0,200000))}</pre>`;return;}
     if(attachment.file&&["docx","xlsx","pptx"].includes(extension)){body.innerHTML=await previewModernOffice(attachment.file,extension);return;}
+    if(attachment.file&&["doc","xls","ppt"].includes(extension)){body.innerHTML=`${unavailablePreview(item,"Este é um formato antigo do Microsoft Office e não pode ser renderizado diretamente pelo navegador. Salve o arquivo como DOCX, XLSX ou PPTX para visualizar seu conteúdo aqui.")}<a class="button button--outline preview-open-link" href="${esc(source)}" target="_blank" rel="noopener">Abrir arquivo</a>`;return;}
     if(attachment.url&&/^https:\/\//i.test(attachment.url)&&["doc","docx","xls","xlsx","ppt","pptx"].includes(extension)){const viewer=`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(attachment.url)}`;body.innerHTML=`<iframe class="preview-frame" src="${esc(viewer)}" title="Prévia de ${esc(attachment.name)}"></iframe>`;return;}
     if(source){body.innerHTML=`${unavailablePreview(item,"Este formato não possui visualização nativa completa no navegador.")}<a class="button button--outline preview-open-link" href="${esc(source)}" target="_blank" rel="noopener">Abrir arquivo</a>`;return;}
     body.innerHTML=unavailablePreview(item,"Este é um registro mockado. O conteúdo real será exibido quando o backend fornecer a URL ou o arquivo do anexo.");
