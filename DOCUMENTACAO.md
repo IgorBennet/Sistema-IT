@@ -8,7 +8,7 @@ O projeto foi desenvolvido em HTML, CSS e JavaScript puros. Para executar, abra 
 - `styles.css`: aparência, responsividade, alto contraste e temas claro/escuro.
 - `app.js`: dados mockados, pesquisa, filtros, criação, edição, exclusão, temas e visualização de anexos.
 
-A exclusão utiliza um modal interno não bloqueante. Isso evita o congelamento aparente causado pela caixa nativa `window.confirm()` e permite que a interface seja atualizada antes da gravação no IndexedDB.
+A exclusão utiliza um modal interno não bloqueante. Isso evita o congelamento aparente causado pela caixa nativa `window.confirm()`.
 
 ## Organização do JavaScript
 
@@ -39,17 +39,15 @@ Arquivos antigos `.doc`, `.xls` e `.ppt` não possuem renderização nativa conf
 
 A prévia local dos formatos modernos apresenta o conteúdo principal: texto do Word, células da primeira aba do Excel e textos dos slides do PowerPoint. Ela não reproduz integralmente fontes, animações, macros, gráficos ou a diagramação original do Microsoft Office.
 
-Os anexos dos cinco registros iniciais são mocks e contêm apenas metadados. Arquivos reais escolhidos pelo botão **Novo item** são guardados no IndexedDB e continuam disponíveis para visualização depois que a página é atualizada ou reaberta no mesmo navegador.
+Os anexos dos cinco registros iniciais são mocks e contêm apenas metadados. Arquivos reais escolhidos pelo botão **Novo item** podem ser visualizados e baixados durante a sessão atual.
 
 O limite do front-end é de **100 MB por anexo**. Na integração definitiva, o backend e o servidor também deverão aceitar esse mesmo tamanho.
 
-O espaço disponível no IndexedDB depende da política e da capacidade do navegador. Se o navegador corporativo bloquear esse armazenamento ou estiver sem espaço, o sistema informa que o item ficará disponível apenas durante a sessão atual.
+Para evitar travamentos, a extração local de DOCX, XLSX e PPTX é limitada a arquivos de até **25 MB**. Arquivos Office maiores continuam aceitos e podem ser baixados, mas não são descompactados para prévia no navegador.
 
-## Armazenamento local
+## Funcionamento sem banco de dados
 
-Enquanto o backend não estiver disponível, o sistema utiliza o **IndexedDB**, banco interno do navegador, para manter os itens criados, editados ou excluídos e seus anexos reais. Esse armazenamento não exige instalação adicional.
-
-Os dados ficam restritos ao navegador e ao computador em que foram cadastrados. Outros colaboradores não enxergarão essas informações até a integração com a API corporativa.
+O sistema não utiliza IndexedDB nem outro banco de dados local. Criações, edições, exclusões e arquivos selecionados ficam apenas na memória da página e são perdidos quando ela é atualizada ou fechada. Essa decisão mantém a demonstração leve e evita o processamento local de grandes anexos durante a persistência.
 
 ## Temas
 
@@ -63,13 +61,12 @@ A preferência fica salva no navegador com `localStorage`.
 
 ## Integração futura com backend
 
-Atualmente, criação, edição, exclusão e anexos são mantidos no IndexedDB do navegador. Na integração real:
+Atualmente, criação, edição, exclusão e anexos funcionam somente durante a sessão atual. Na integração real:
 
 - Substitua a leitura do array por `GET /items`.
 - Substitua a criação local por `POST /items` com upload do anexo.
 - Substitua `saveItem()` por `PUT /items/:id` ou `PATCH /items/:id` durante a edição.
 - Substitua `deleteItem()` por `DELETE /items/:id` após a confirmação.
-- Remova as funções `openLocalDatabase()`, `persistItems()` e `loadStoredItems()` quando a API assumir a persistência.
 - Faça o backend devolver uma URL ou stream seguro para visualização e download do anexo.
 
 Não coloque URLs corporativas, tokens ou credenciais diretamente no front-end.
