@@ -8,6 +8,8 @@ O projeto foi desenvolvido em HTML, CSS e JavaScript puros. Para executar, abra 
 - `styles.css`: aparência, responsividade, alto contraste e temas claro/escuro.
 - `app.js`: dados mockados, pesquisa, filtros, criação, edição, exclusão, temas e visualização de anexos.
 
+A exclusão utiliza um modal interno não bloqueante. Isso evita o congelamento aparente causado pela caixa nativa `window.confirm()` e permite que a interface seja atualizada antes da gravação no IndexedDB.
+
 ## Organização do JavaScript
 
 O `app.js` está dividido em seis blocos comentados:
