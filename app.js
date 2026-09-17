@@ -66,12 +66,12 @@ function renderMeetings(){
   $("#meetings-grid").innerHTML=items.filter(item=>item.type==="meeting").slice(0,3).map(item=>`<article class="meeting-card">
     <div class="meeting-card__top">${badge(item.type)}${important(item)}</div>
     <h3>${esc(item.title)}</h3><p>${esc(item.description)}</p>
-    <div class="meeting-card__footer"><span class="author"><span class="avatar">${esc(item.author.initials)}</span><span>${esc(item.author.name)}<br>${formatDate(item.createdAt)}</span></span><span class="mini-actions"><button class="mini-button" type="button" data-open="${item.id}" aria-label="Ver detalhes de ${esc(item.title)}">${icon("i-eye")}</button><button class="mini-button" type="button" data-download="${item.id}" ${item.attachment?"":"disabled"} aria-label="Baixar anexo de ${esc(item.title)}">${icon("i-download")}</button></span></div>
+    <div class="meeting-card__footer"><span class="author"><span class="avatar">${esc(item.author.initials)}</span><span>${esc(item.author.name)}<br>${formatDate(item.createdAt)}</span></span><span class="mini-actions"><button class="mini-button" type="button" data-open="${item.id}" aria-label="Ver detalhes de ${esc(item.title)}">${icon("i-eye")}</button><button class="mini-button" type="button" data-download="${item.id}" ${item.attachment?"":"disabled"} aria-label="Baixar anexo de ${esc(item.title)}">${icon("i-download")}</button><button class="mini-button mini-button--danger" type="button" data-delete="${item.id}" aria-label="Excluir ${esc(item.title)}">${icon("i-trash")}</button></span></div>
   </article>`).join("");
 }
 
-function tableRow(item){return `<tr><td><strong>${esc(item.id)}</strong></td><td><div class="item-title"><span class="item-type-icon">${icon(TYPE_ICONS[item.type])}</span><span>${badge(item.type)}<strong>${esc(item.title)}</strong><small>${esc(item.description)}</small></span></div></td><td><span class="author"><span class="avatar">${esc(item.author.initials)}</span>${esc(item.author.name)}</span></td><td class="date-cell">${formatDate(item.updatedAt,true)}</td><td><span class="attachment-name">${icon("i-paperclip")}${item.attachment?esc(item.attachment.name):"Sem anexo"}</span></td><td><div class="row-actions"><button class="mini-button" type="button" data-open="${item.id}" aria-label="Ver detalhes de ${esc(item.title)}">${icon("i-eye")}</button><button class="mini-button" type="button" data-download="${item.id}" ${item.attachment?"":"disabled"} aria-label="Baixar anexo de ${esc(item.title)}">${icon("i-download")}</button></div></td></tr>`;}
-function mobileCard(item){return `<article class="mobile-item"><div class="mobile-item__head">${badge(item.type)}${important(item)}</div><h3>${esc(item.title)}</h3><p>${esc(item.description)}</p><div class="mobile-item__meta"><span><strong>ID:</strong> ${esc(item.id)}</span><span><strong>Autor:</strong> ${esc(item.author.name)}</span><span><strong>Atualização:</strong> ${formatDate(item.updatedAt)}</span><span><strong>Anexo:</strong> ${item.attachment?"Disponível":"Não possui"}</span></div><div class="mobile-item__actions"><button class="button button--outline" type="button" data-open="${item.id}">${icon("i-eye")}Detalhes</button><button class="button button--primary" type="button" data-download="${item.id}" ${item.attachment?"":"disabled"}>${icon("i-download")}Baixar</button></div></article>`;}
+function tableRow(item){return `<tr><td><strong>${esc(item.id)}</strong></td><td><div class="item-title"><span class="item-type-icon">${icon(TYPE_ICONS[item.type])}</span><span>${badge(item.type)}<strong>${esc(item.title)}</strong><small>${esc(item.description)}</small></span></div></td><td><span class="author"><span class="avatar">${esc(item.author.initials)}</span>${esc(item.author.name)}</span></td><td class="date-cell">${formatDate(item.updatedAt,true)}</td><td><span class="attachment-name">${icon("i-paperclip")}${item.attachment?esc(item.attachment.name):"Sem anexo"}</span></td><td><div class="row-actions"><button class="mini-button" type="button" data-open="${item.id}" aria-label="Ver detalhes de ${esc(item.title)}">${icon("i-eye")}</button><button class="mini-button" type="button" data-download="${item.id}" ${item.attachment?"":"disabled"} aria-label="Baixar anexo de ${esc(item.title)}">${icon("i-download")}</button><button class="mini-button mini-button--danger" type="button" data-delete="${item.id}" aria-label="Excluir ${esc(item.title)}">${icon("i-trash")}</button></div></td></tr>`;}
+function mobileCard(item){return `<article class="mobile-item"><div class="mobile-item__head">${badge(item.type)}${important(item)}</div><h3>${esc(item.title)}</h3><p>${esc(item.description)}</p><div class="mobile-item__meta"><span><strong>ID:</strong> ${esc(item.id)}</span><span><strong>Autor:</strong> ${esc(item.author.name)}</span><span><strong>Atualização:</strong> ${formatDate(item.updatedAt)}</span><span><strong>Anexo:</strong> ${item.attachment?"Disponível":"Não possui"}</span></div><div class="mobile-item__actions"><button class="button button--outline" type="button" data-open="${item.id}">${icon("i-eye")}Detalhes</button><button class="button button--primary" type="button" data-download="${item.id}" ${item.attachment?"":"disabled"}>${icon("i-download")}Baixar</button><button class="button button--danger" type="button" data-delete="${item.id}">${icon("i-trash")}Excluir</button></div></article>`;}
 
 function renderItems(){
   renderFilters();renderMeetings();
@@ -120,6 +120,18 @@ function downloadItem(id){
   toast("Download iniciado.","success");
 }
 
+function deleteItem(id){
+  const item=items.find(entry=>entry.id===id);
+  if(!item){toast("Item não encontrado.","error");return;}
+  const confirmed=window.confirm(`Deseja realmente excluir “${item.title}”?\n\nEssa ação não poderá ser desfeita.`);
+  if(!confirmed)return;
+  if(item.attachment?.objectUrl)URL.revokeObjectURL(item.attachment.objectUrl);
+  items=items.filter(entry=>entry.id!==id);
+  if(state.selected?.id===id){state.selected=null;closeTopModal();}
+  renderItems();
+  toast(`${TYPE_LABELS[item.type]} excluído(a) com sucesso.`,"success");
+}
+
 function renderTypeOptions(){
   $("#type-options").innerHTML=Object.entries(TYPE_LABELS).map(([type,label])=>`<button class="type-option" type="button" data-new-type="${type}" aria-pressed="${state.newType===type}">${icon(TYPE_ICONS[type],"icon icon--large")}<span>${label}</span></button>`).join("");
 }
@@ -157,6 +169,7 @@ function bindEvents(){
   document.addEventListener("click",event=>{
     const filter=event.target.closest("[data-filter]");if(filter){state.type=filter.dataset.filter;state.page=1;renderItems();return;}
     const page=event.target.closest("[data-page]");if(page&&!page.disabled){state.page=Number(page.dataset.page);renderItems();$("#documents-title").scrollIntoView({behavior:"smooth"});return;}
+    const remove=event.target.closest("[data-delete]");if(remove){deleteItem(remove.dataset.delete);return;}
     const open=event.target.closest("[data-open]");if(open){showDetails(open.dataset.open,open);return;}
     const download=event.target.closest("[data-download]");if(download){downloadItem(download.dataset.download);return;}
     const type=event.target.closest("[data-new-type]");if(type){state.newType=type.dataset.newType;renderTypeOptions();return;}
